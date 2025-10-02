@@ -1,12 +1,12 @@
-SISTEMA DE RESERVAS
+<h2 align="center">SISTEMA DE RESERVAS</h2>
 
-Sistema de Reservas para Guardería Canina
-
+<h2 align="center">Sistema de Reservas para Guardería Canina</h2>
 
 Sistema completo de gestión de reservas para guarderías caninas con interfaz de cliente y panel de administración. Incluye gestión en tiempo real de disponibilidad, múltiples servicios, tarifas personalizables y exportación de datos.
 
 Este proyecto ha sido desarrollado como parte de mi proceso de aprendizaje y formación como Full Stack Developer. Utilizando Claude como herramienta de asistencia y pair programming, he trabajado en la implementación de funcionalidades reales que refuerzan tanto conocimientos previos como nuevas tecnologías.
-Objetivos de Aprendizaje
+
+<h4>Objetivos de Aprendizaje</h4>
 
 Práctica con tecnologías modernas: Integración de Supabase, manipulación avanzada del DOM, y gestión de estado en JavaScript vanilla
 Diseño UI/UX: Implementación de interfaces modernas con Tailwind CSS y efectos visuales contemporáneos
@@ -16,7 +16,9 @@ Resolución de problemas reales: Implementación de funcionalidades que una guar
 
 Este proyecto forma parte de mi portfolio profesional y demuestra mi capacidad para desarrollar aplicaciones web completas y funcionales. Cada línea de código ha sido revisada, comprendida e implementada como parte de mi proceso de aprendizaje continuo
 
-Características Principales
+<h3>Características Principales</h3>
+
+<h4></h4>
 Para Clientes
 
 Selección de servicios: Paseos, Guardería y Alojamiento
@@ -28,6 +30,7 @@ Perro extra: Opción para traer un segundo perro
 Proceso guiado en 3 pasos con validación
 Confirmación por email
 
+<h4></h4>
 Para Administradores
 
 Gestión completa de reservas: Ver, editar, confirmar, rechazar o cancelar
@@ -39,27 +42,30 @@ Exportación de datos: Excel, CSV y PDF
 Filtros avanzados: Por estado, servicio y fechas
 Estadísticas en tiempo real
 
-Tecnologías Utilizadas
+<h3>Tecnologías Utilizadas</h3>
 
 Frontend: HTML5, Tailwind CSS, JavaScript (Vanilla)
 Backend: Supabase (PostgreSQL)
 Estilos: CSS personalizado con glassmorphism y gradientes modernos
 Animaciones: Transiciones CSS fluidas
 
-Estructura del Proyecto
-proyecto/
-├── css/
-│   ├── styles_index.css      # Estilos del cliente
-│   └── styles_admin.css      # Estilos del panel admin
-├── js/
-│   ├── client.js             # Lógica del cliente
-│   └── admin.js              # Lógica del panel admin
-├── html/
-│   ├── index.html            # Página de reservas
-│   └── admin.html            # Panel de administración
-└── settings.json             # Configuración del servidor local
-Uso
-Cliente (index.html)
+<h3>Estructura del Proyecto</h3>
+
+proyecto/ <br>
+├── css/ <br>
+│   ├── styles_index.css      # Estilos del cliente <br>
+│   └── styles_admin.css      # Estilos del panel admin <br>
+├── js/ <br>
+│   ├── client.js             # Lógica del cliente <br>
+│   └── admin.js              # Lógica del panel admin <br>
+├── html/ <br>
+│   ├── index.html            # Página de reservas <br>
+│   └── admin.html            # Panel de administración <br>
+└── settings.json             # Configuración del servidor local <br>
+
+<h3>Uso</h3>
+
+<h4>Cliente (index.html)</h4>
 
 Paso 1: Selecciona el servicio y las fechas
 
@@ -83,56 +89,63 @@ Acepta la política de privacidad
 Confirma la reserva
 
 
+<h4>Administrador (admin.html)</h4>
 
-Administrador (admin.html)
-Pestaña Reservas
+
+<strong> Pestaña Reservas </strong>
+
 
 Visualiza todas las reservas con filtros
 Confirma, rechaza o cancela reservas
 Edita detalles de reservas confirmadas
 Ve información completa de cada reserva
 
-Pestaña Calendario
+<strong> Pestaña Calendario </strong>
 
 Visualiza ocupación por servicio y mes
 Bloquea/desbloquea días manualmente
 Controla la disponibilidad visualmente
 
-Pestaña Festivos
+<strong> Pestaña Festivos </strong>
 
 Añade días festivos con tarifas especiales
 Gestiona el listado de festivos activos
 
-Pestaña Precios
+<strong> 
+Pestaña Precios </strong>
 
 Configura precios por servicio y tarifa
 Ajusta plazas disponibles
 Restablece precios por defecto
 
-Pestaña Exportar
+<strong>Pestaña Exportar </strong>
 
 Exporta reservas a Excel, CSV o PDF
 Filtra por fechas, servicio y estado
 
-Personalización
+<h3>Personalización</h3>
 
-Colores
+<strong> Colores </strong>
+
 Los colores principales se definen en los archivos CSS usando gradientes:
-
 Primario: #667eea → #764ba2
 Badges se pueden modificar en las clases .badge-*
 
-Precios
+<strong> Precios </strong>
+
 Los precios se muestran en client.js en el objeto preciosPorServicio. Estos son solo visuales; los reales se calculan en el servidor.
 Plazas Disponibles
 Modifica en la tabla configuracion de Supabase o desde el panel admin.
 
-Notas Importantes
+
+<h3>Notas Importantes</h3>
 
 No usa localStorage: Todo se guarda en Supabase
 Validación en tiempo real: Verifica disponibilidad antes de confirmar
 Responsive: Funciona en móvil, tablet y escritorio
 Festivos: Los días festivos pueden tener tarifas diferentes (configurar lógica de cálculo según necesidad)
 
-Estado del Proyecto
+
+<h3>Estado del Proyecto</h3>
+
 Este proyecto está actualmente en desarrollo. Algunas funcionalidades pueden estar incompletas o en proceso de implementación.
