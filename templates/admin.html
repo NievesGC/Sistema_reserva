@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - Guardería Canina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../css/styles_admin.css">
+
+</head>
+<body>
+    <div class="min-h-screen p-4 py-6">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="glass-effect rounded-3xl shadow-2xl p-6 mb-6">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                        <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent flex items-center gap-2">
+                            <svg width="32" height="32" viewBox="0 0 24 24" class="icon-stroke" style="stroke: #667eea;">
+                                <path d="M12 8c-3 0-6 2-6 5v3h12v-3c0-3-3-5-6-5z"/>
+                                <circle cx="9" cy="16" r="1"/>
+                                <circle cx="15" cy="16" r="1"/>
+                            </svg>
+                            Panel de Administración
+                        </h1>
+                        <p class="text-gray-600 text-sm mt-1">Gestión de Guardería Canina</p>
+                    </div>
+                    <button onclick="cerrarSesion()" class="px-6 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition">
+                        Cerrar Sesión
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabs de navegación -->
+            <div class="glass-effect rounded-3xl shadow-2xl p-2 mb-6">
+                <div class="flex flex-wrap gap-2 items-center justify-between">
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="cambiarTab('reservas')" id="tab-reservas" class="tab-button active flex-1 md:flex-none px-6 py-3 rounded-xl font-semibold">
+                            📋 Reservas
+                        </button>
+                        <button onclick="cambiarTab('calendario')" id="tab-calendario" class="tab-button flex-1 md:flex-none px-6 py-3 rounded-xl font-semibold bg-white text-gray-700">
+                            📅 Calendario
+                        </button>
+                        <button onclick="cambiarTab('festivos')" id="tab-festivos" class="tab-button flex-1 md:flex-none px-6 py-3 rounded-xl font-semibold bg-white text-gray-700">
+                            🎉 Festivos
+                        </button>
+                        <button onclick="cambiarTab('precios')" id="tab-precios" class="tab-button flex-1 md:flex-none px-6 py-3 rounded-xl font-semibold bg-white text-gray-700">
+                            💰 Precios
+                        </button>
+                        <button onclick="cambiarTab('exportar')" id="tab-exportar" class="tab-button flex-1 md:flex-none px-6 py-3 rounded-xl font-semibold bg-white text-gray-700">
+                            📊 Exportar
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 px-4 py-2 bg-orange-100 rounded-xl">
+                        <svg width="20" height="20" viewBox="0 0 24 24" class="icon-stroke" style="stroke: #f59e0b;">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                        <span class="text-sm font-semibold text-gray-700">Pendientes:</span>
+                        <span class="text-xl font-bold text-orange-500" id="stat-pendientes">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenido de tabs -->
+            <div class="glass-effect rounded-3xl shadow-2xl p-6">
+                <!-- Tab Reservas -->
+                <div id="content-reservas" class="tab-content">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4">Gestión de Reservas</h2>
+                        <div class="flex gap-2 flex-wrap">
+                            <select id="filtro-estado" onchange="filtrarReservas()" class="px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none">
+                                <option value="todas">Todas</option>
+                                <option value="activas">Activas</option>
+                                <option value="pendiente">Pendientes</option>
+                                <option value="confirmada">Confirmadas</option>
+                                <option value="rechazada">Rechazadas</option>
+                                <option value="cancelada">Canceladas</option>
+                                <option value="pasadas">Pasadas</option>
+                            </select>
+                            <select id="filtro-servicio" onchange="filtrarReservas()" class="px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none">
+                                <option value="todos">Todos los servicios</option>
+                                <option value="paseos">Paseos</option>
+                                <option value="guarderia">Guardería</option>
+                                <option value="alojamiento">Alojamiento</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="lista-reservas" class="space-y-4"></div>
+                </div>
+
+                <!-- Tab Calendario -->
+                <div id="content-calendario" class="tab-content hidden">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Calendario de Ocupación</h2>
+                        <div class="flex gap-2">
+                            <button onclick="mesAnterior()" class="px-4 py-2 bg-gray-200 rounded-xl hover:bg-gray-300">←</button>
+                            <span id="mes-actual" class="px-6 py-2 font-semibold">Enero 2025</span>
+                            <button onclick="mesSiguiente()" class="px-4 py-2 bg-gray-200 rounded-xl hover:bg-gray-300">→</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4 flex gap-3 items-center">
+                        <select id="servicio-calendario" onchange="cargarCalendario()" class="px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none">
+                            <option value="paseos">Paseos</option>
+                            <option value="guarderia">Guardería</option>
+                            <option value="alojamiento">Alojamiento</option>
+                        </select>
+                        <button onclick="activarModoBloqueo()" id="btn-bloquear" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition font-semibold">
+                            🔒 Bloquear Días
+                        </button>
+                        <button onclick="activarModoDesbloqueo()" id="btn-desbloquear" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition font-semibold">
+                            🔓 Desbloquear Días
+                        </button>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-2xl">
+                        <div class="grid grid-cols-7 gap-2 mb-2">
+                            <div class="text-center font-bold text-purple-600 text-sm">L</div>
+                            <div class="text-center font-bold text-purple-600 text-sm">M</div>
+                            <div class="text-center font-bold text-purple-600 text-sm">X</div>
+                            <div class="text-center font-bold text-purple-600 text-sm">J</div>
+                            <div class="text-center font-bold text-purple-600 text-sm">V</div>
+                            <div class="text-center font-bold text-purple-600 text-sm">S</div>
+                            <div class="text-center font-bold text-purple-600 text-sm">D</div>
+                        </div>
+                        <div id="calendario-admin" class="grid grid-cols-7 gap-2"></div>
+                    </div>
+
+                    <div class="mt-6 flex gap-4 text-sm">
+                        <div class="flex items-center gap-2"><div class="w-4 h-4 bg-green-400 rounded"></div><span>Disponible</span></div>
+                        <div class="flex items-center gap-2"><div class="w-4 h-4 bg-yellow-400 rounded"></div><span>Parcial</span></div>
+                        <div class="flex items-center gap-2"><div class="w-4 h-4 bg-red-400 rounded"></div><span>Completo</span></div>
+                        <div class="flex items-center gap-2"><div class="w-4 h-4 bg-gray-400 rounded"></div><span>Bloqueado</span></div>
+                    </div>
+                </div>
+
+                <!-- Tab Festivos -->
+                <div id="content-festivos" class="tab-content hidden">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Gestión de Días Festivos</h2>
+                        <button onclick="abrirModalFestivo()" class="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition">
+                            + Añadir Festivo
+                        </button>
+                    </div>
+                    <div id="lista-festivos" class="space-y-3"></div>
+                </div>
+
+                <!-- Tab Precios -->
+                <div id="content-precios" class="tab-content hidden">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Configuración de Precios</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Paseos -->
+                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border-2 border-blue-200">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">🐕 Paseos</h3>
+                            <div class="space-y-4">
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Tarifa Normal</label><input type="number" id="precio-paseos-normal" value="12" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Tarifa Cachorros</label><input type="number" id="precio-paseos-cachorros" value="14" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Festivos</label><input type="number" id="precio-paseos-festivos" value="13" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Perro Extra</label><input type="number" id="precio-paseos-extra" value="9" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Plazas Disponibles</label><input type="number" id="plazas-paseos" value="2" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                            </div>
+                        </div>
+
+                        <!-- Guardería -->
+                        <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border-2 border-green-200">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">☀️ Guardería</h3>
+                            <div class="space-y-4">
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Tarifa Normal</label><input type="number" id="precio-guarderia-normal" value="20" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Tarifa Cachorros</label><input type="number" id="precio-guarderia-cachorros" value="22" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Festivos</label><input type="number" id="precio-guarderia-festivos" value="25" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Perro Extra</label><input type="number" id="precio-guarderia-extra" value="15" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Plazas Disponibles</label><input type="number" id="plazas-guarderia" value="4" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                            </div>
+                        </div>
+
+                        <!-- Alojamiento -->
+                        <div class="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-2xl border-2 border-purple-200">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">🏠 Alojamiento</h3>
+                            <div class="space-y-4">
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Tarifa Normal</label><input type="number" id="precio-alojamiento-normal" value="35" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Tarifa Cachorros</label><input type="number" id="precio-alojamiento-cachorros" value="38" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Festivos</label><input type="number" id="precio-alojamiento-festivos" value="40" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Perro Extra</label><input type="number" id="precio-alojamiento-extra" value="25" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Plazas Disponibles</label><input type="number" id="plazas-alojamiento" value="4" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex gap-4">
+                        <button onclick="guardarPrecios()" class="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition">Guardar Cambios</button>
+                        <button onclick="resetearPrecios()" class="px-8 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition">Restablecer</button>
+                    </div>
+                </div>
+
+                <!-- Tab Exportar -->
+                <div id="content-exportar" class="tab-content hidden">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Exportar Datos</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border-2 border-blue-200">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4">Rango de Fechas</h3>
+                            <div class="space-y-4">
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Desde</label><input type="date" id="export-desde" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Hasta</label><input type="date" id="export-hasta" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Servicio</label><select id="export-servicio" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"><option value="todos">Todos</option><option value="paseos">Paseos</option><option value="guarderia">Guardería</option><option value="alojamiento">Alojamiento</option></select></div>
+                                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Estado</label><select id="export-estado" class="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none"><option value="todos">Todos</option><option value="pendiente">Pendientes</option><option value="confirmada">Confirmadas</option><option value="rechazada">Rechazadas</option><option value="cancelada">Canceladas</option></select></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border-2 border-green-200">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4">Formato de Exportación</h3>
+                            <div class="space-y-4">
+                                <button onclick="exportarExcel()" class="w-full px-6 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition flex items-center justify-center gap-2"><svg width="20" height="20" viewBox="0 0 24 24" class="icon-stroke" style="stroke: white;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Exportar a Excel (.xlsx)</button>
+                                <button onclick="exportarCSV()" class="w-full px-6 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition flex items-center justify-center gap-2"><svg width="20" height="20" viewBox="0 0 24 24" class="icon-stroke" style="stroke: white;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Exportar a CSV</button>
+                                <button onclick="exportarPDF()" class="w-full px-6 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition flex items-center justify-center gap-2"><svg width="20" height="20" viewBox="0 0 24 24" class="icon-stroke" style="stroke: white;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Exportar a PDF</button>
+                            </div>
+                            
+                            <div class="mt-6 p-4 bg-white rounded-xl">
+                                <p class="text-sm text-gray-600"><strong>Total de registros:</strong> <span id="total-export">0</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalle Reserva -->
+    <div id="modal-detalle" class="modal">
+        <div class="modal-content p-8">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-gray-800">Detalle de Reserva</h3>
+                <button onclick="cerrarModal('modal-detalle')" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div id="detalle-content"></div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Reserva -->
+    <div id="modal-editar" class="modal">
+        <div class="modal-content p-8" style="max-width: 800px;">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-gray-800">Modificar Reserva</h3>
+                <button onclick="cerrarModal('modal-editar')" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div id="form-editar" class="space-y-4"></div>
+        </div>
+    </div>
+
+    <!-- Modal Festivo -->
+    <div id="modal-festivo" class="modal">
+        <div class="modal-content p-8">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-gray-800">Añadir Día Festivo</h3>
+                <button onclick="cerrarModal('modal-festivo')" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Fecha</label><input type="date" id="festivo-fecha" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                <div><label class="block text-sm font-semibold text-gray-700 mb-2">Nombre</label><input type="text" id="festivo-nombre" placeholder="Ej: Navidad" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none"></div>
+                <div class="flex gap-4">
+                    <button onclick="guardarFestivo()" class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition">Guardar</button>
+                    <button onclick="cerrarModal('modal-festivo')" class="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Bloquear Día -->
+    <div id="modal-bloquear" class="modal">
+        <div class="modal-content p-8">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-gray-800">Bloquear Día</h3>
+                <button onclick="cerrarModal('modal-bloquear')" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <p class="text-gray-600">¿Deseas bloquear este día para el servicio seleccionado?</p>
+                <p class="font-semibold">Fecha: <span id="bloquear-fecha"></span></p>
+                <p class="font-semibold">Servicio: <span id="bloquear-servicio"></span></p>
+                <div class="flex gap-4">
+                    <button onclick="confirmarBloqueo()" class="flex-1 px-6 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition">Bloquear</button>
+                    <button onclick="cerrarModal('modal-bloquear')" class="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/admin.js"></script>
+</body>
+</html>
