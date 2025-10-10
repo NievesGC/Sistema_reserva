@@ -460,6 +460,7 @@
             direccionInfo.classList.add('hidden');
         }
         state.precioTotal = precioTotal;
+        agregarValidacionTiempoReal();
     }
 
     function volverAPaso2() {
@@ -479,55 +480,199 @@
         }
     }
 
-    async function confirmarReserva() {
-        const btnText = document.getElementById('btn-confirmar-text');
-        const btnSpinner = document.getElementById('btn-confirmar-spinner');
+async function confirmarReserva() {
+    // 1. PRIMERO validamos el formulario
+    if (!validarFormularioPaso3()) {
+        // Si la validación falla, no continuamos
+        return;
+    }
+    
+    // 2. Mostramos el spinner de carga
+    const btnText = document.getElementById('btn-confirmar-text');
+    const btnSpinner = document.getElementById('btn-confirmar-spinner');
+    btnText.classList.add('hidden');
+    btnSpinner.classList.remove('hidden');
 
-        btnText.classList.add('hidden');
-        btnSpinner.classList.remove('hidden');
-
-        try {
-            const reserva = {
-                servicio: state.servicioSeleccionado,
-                fecha_desde: state.fechaDesde,
-                fecha_hasta: state.fechaHasta || state.fechaDesde,
-                tarifa: state.tarifaSeleccionada,
-                tramo_horario: state.tramoSeleccionado,
-                nombre_dueno: document.getElementById('nombreDueno').value,
-                telefono: document.getElementById('telefono').value,
-                email: document.getElementById('email').value,
-                direccion: document.getElementById('direccion').value || '',
-                nombre_perro: document.getElementById('nombrePerro').value,
-                raza: document.getElementById('raza').value || '',
-                tamano: document.querySelector('input[name="tamano"]:checked').value,
-                notas: document.getElementById('notas').value || '',
-                precio_total: state.precioTotal || 50.00,
-                estado: 'pendiente',
-                perro_extra: state.perroExtra
-            };
-            
-            const { data, error } = await supabase.from('reservas').insert([reserva]).select();
-            
-            if (error) {
-                console.error('Error:', error);
-                throw new Error(error.message);
-            }
-            
-            document.getElementById('paso3').classList.add('hidden');
-            document.getElementById('confirmacion').classList.remove('hidden');
-            document.getElementById('steps-indicator').style.display = 'none';
-            
-            document.getElementById('resumen-final').innerHTML = `
-                <p class="font-semibold mb-2">Reserva #${data[0].id.substring(0,8)}</p>
-                <p class="text-sm">Te hemos enviado un email a ${reserva.email}</p>
-            `;
-            
-        } catch (error) {
-            alert('Error al confirmar la reserva: ' + error.message);
-        } finally {
-            btnText.classList.remove('hidden');
-            btnSpinner.classList.add('hidden');
+    try {
+        // 3. Construimos el objeto de reserva con todos los datos validados
+        const reserva = {
+            servicio: state.servicioSeleccionado,
+            fecha_desde: state.fechaDesde,
+            fecha_hasta: state.fechaHasta || state.fechaDesde,
+            tarifa: state.tarifaSeleccionada,
+            tramo_horario: state.tramoSeleccionado,
+            nombre_dueno: document.getElementById('nombreDueno').value.trim(),
+            telefono: document.getElementById('telefono').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            direccion: document.getElementById('direccion').value.trim() || '',
+            nombre_perro: document.getElementById('nombrePerro').value.trim(),
+            raza: document.getElementById('raza').value.trim() || '',
+            tamano: document.querySelector('input[name="tamano"]:checked').value,
+            notas: document.getElementById('notas').value.trim() || '',
+            precio_total: state.precioTotal || 50.00,
+            estado: 'pendiente',
+            perro_extra: state.perroExtra
+        };
+        
+        // 4. Enviamos la reserva a Supabase
+        const { data, error } = await supabase
+            .from('reservas')
+            .insert([reserva])
+            .select();
+        
+        if (error) {
+            console.error('Error:', error);
+            throw new Error(error.message);
         }
+        
+        // 5. Mostramos la confirmación
+        document.getElementById('paso3').classList.add('hidden');
+        document.getElementById('confirmacion').classList.remove('hidden');
+        document.getElementById('steps-indicator').style.display = 'none';
+        
+        document.getElementById('resumen-final').innerHTML = `
+            <p class="font-semibold mb-2">Reserva #${data[0].id.substring(0,8)}</p>
+            <p class="text-sm">Te hemos enviado un email a ${reserva.email}</p>
+        `;
+        
+    } catch (error) {
+        alert('❌ Error al confirmar la reserva: ' + error.message);
+    } finally {
+        // 6. Restauramos el botón (ocultamos spinner)
+        btnText.classList.remove('hidden');
+        btnSpinner.classList.add('hidden');
+    }
+}
+
+function validarFormularioPaso3() {
+    // 1. Obtenemos todos los campos obligatorios del formulario
+    const nombreDueno = document.getElementById('nombreDueno').value.trim();
+    const telefono = document.getElementById('telefono').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const nombrePerro = document.getElementById('nombrePerro').value.trim();
+    
+    // 2. Verificamos que haya un tamaño seleccionado
+    const tamanoSeleccionado = document.querySelector('input[name="tamano"]:checked');
+    
+    // 3. Verificamos que la política de privacidad esté aceptada
+    const aceptaPrivacidad = document.getElementById('aceptaPrivacidad').checked;
+    
+    // 4. Si el servicio es alojamiento Y hay transporte, la dirección es obligatoria
+    const direccion = document.getElementById('direccion').value.trim();
+    const necesitaDireccion = state.servicioSeleccionado === 'alojamiento' && 
+                              (state.tramoSeleccionado === 'recogida' || 
+                               state.tramoSeleccionado === 'recogida-entrega');
+
+    // 5. Array para almacenar los mensajes de error
+    const errores = [];
+    
+    // 6. Validamos cada campo y agregamos mensajes descriptivos si faltan
+    if (!nombreDueno) {
+        errores.push('• Tu nombre es obligatorio');
+    }
+    
+    if (!telefono) {
+        errores.push('• El teléfono es obligatorio');
+    } else if (!/^[0-9]{9}$/.test(telefono.replace(/\s/g, ''))) {
+        // Validamos que el teléfono tenga formato correcto (9 dígitos)
+        errores.push('• El teléfono debe tener 9 dígitos');
+    }
+    
+    if (!email) {
+        errores.push('• El email es obligatorio');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        // Validamos que el email tenga formato correcto
+        errores.push('• El formato del email no es válido');
+    }
+    
+    if (!nombrePerro) {
+        errores.push('• El nombre del perro es obligatorio');
+    }
+    
+    if (!tamanoSeleccionado) {
+        errores.push('• Debes seleccionar el tamaño del perro');
+    }
+    
+    if (necesitaDireccion && !direccion) {
+        errores.push('• La dirección es obligatoria cuando hay transporte');
+    }
+    
+    if (!aceptaPrivacidad) {
+        errores.push('• Debes aceptar la política de privacidad');
+    }
+    
+    // 7. Si hay errores, los mostramos al usuario
+    if (errores.length > 0) {
+        alert('⚠️ Por favor completa los siguientes campos:\n\n' + errores.join('\n'));
+        return false;
+    }
+    
+    // 8. Todo está correcto
+    return true;
+}
+
+async function confirmarReserva() {
+    // 1. PRIMERO validamos el formulario
+    if (!validarFormularioPaso3()) {
+        // Si la validación falla, no continuamos
+        return;
+    }
+    
+    // 2. Mostramos el spinner de carga
+    const btnText = document.getElementById('btn-confirmar-text');
+    const btnSpinner = document.getElementById('btn-confirmar-spinner');
+    btnText.classList.add('hidden');
+    btnSpinner.classList.remove('hidden');
+
+    try {
+        // 3. Construimos el objeto de reserva con todos los datos validados
+        const reserva = {
+            servicio: state.servicioSeleccionado,
+            fecha_desde: state.fechaDesde,
+            fecha_hasta: state.fechaHasta || state.fechaDesde,
+            tarifa: state.tarifaSeleccionada,
+            tramo_horario: state.tramoSeleccionado,
+            nombre_dueno: document.getElementById('nombreDueno').value.trim(),
+            telefono: document.getElementById('telefono').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            direccion: document.getElementById('direccion').value.trim() || '',
+            nombre_perro: document.getElementById('nombrePerro').value.trim(),
+            raza: document.getElementById('raza').value.trim() || '',
+            tamano: document.querySelector('input[name="tamano"]:checked').value,
+            notas: document.getElementById('notas').value.trim() || '',
+            precio_total: state.precioTotal || 50.00,
+            estado: 'pendiente',
+            perro_extra: state.perroExtra
+        };
+        
+        // 4. Enviamos la reserva a Supabase
+        const { data, error } = await supabase
+            .from('reservas')
+            .insert([reserva])
+            .select();
+        
+        if (error) {
+            console.error('Error:', error);
+            throw new Error(error.message);
+        }
+        
+        // 5. Mostramos la confirmación
+        document.getElementById('paso3').classList.add('hidden');
+        document.getElementById('confirmacion').classList.remove('hidden');
+        document.getElementById('steps-indicator').style.display = 'none';
+        
+        document.getElementById('resumen-final').innerHTML = `
+            <p class="font-semibold mb-2">Reserva #${data[0].id.substring(0,8)}</p>
+            <p class="text-sm">Te hemos enviado un email a ${reserva.email}</p>
+        `;
+        
+    } catch (error) {
+        alert('❌ Error al confirmar la reserva: ' + error.message);
+    } finally {
+        // 6. Restauramos el botón (ocultamos spinner)
+        btnText.classList.remove('hidden');
+        btnSpinner.classList.add('hidden');
+    }
 }
 
 window.addEventListener('DOMContentLoaded', init);
