@@ -510,20 +510,134 @@ async function cargarDisponibilidad() {
     }
 }
 
+// ========================================
+// FUNCIONES DE CÁLCULO DE OCUPACIÓN
+// ========================================
+
+/**
+ * Calcula la ocupación REAL de un día específico contando las reservas activas
+ * 
+ * @param {string} fecha - Fecha en formato YYYY-MM-DD
+ * @param {string} servicio - Tipo de servicio (paseos/guarderia/alojamiento)
+ * @returns {number} Número de plazas ocupadas en ese día
+ */
+function calcularOcupacionReal(fecha, servicio) {
+    // 1. Filtramos las reservas que estén activas (pendiente o confirmada)
+    //    y que incluyan esta fecha en su rango
+    const reservasActivas = reservasData.filter(reserva => {
+        return reserva.servicio === servicio &&
+               (reserva.estado === 'pendiente' || reserva.estado === 'confirmada') &&
+               reserva.fecha_desde <= fecha &&
+               reserva.fecha_hasta >= fecha;
+    });
+    
+    // 2. Contamos cuántas plazas ocupan en total
+    let ocupacion = reservasActivas.length;
+    
+    // 3. Si tienen perro extra, cuentan como 2 plazas
+    reservasActivas.forEach(reserva => {
+        if (reserva.perro_extra) {
+            ocupacion++; // Suma 1 plaza adicional
+        }
+    });
+    
+    return ocupacion;
+}
+
+/**
+ * Obtiene las plazas totales disponibles para un servicio
+ * 
+ * @param {string} servicio - Tipo de servicio
+ * @returns {number} Total de plazas disponibles
+ */
+function obtenerPlazasTotales(servicio) {
+    // Valores por defecto
+    const valoresPorDefecto = {
+        'paseos': 2,
+        'guarderia': 4,
+        'alojamiento': 4
+    };
+    
+    return valoresPorDefecto[servicio] || 4;
+}
+
+/**
+ * Determina el estado visual de un día según su ocupación
+ * 
+ * @param {number} ocupadas - Plazas ocupadas
+ * @param {number} totales - Plazas totales
+ * @param {boolean} bloqueado - Si el día está bloqueado
+ * @returns {object} Objeto con clase CSS y descripción
+ */
+function obtenerEstadoVisual(ocupadas, totales, bloqueado) {
+    if (bloqueado) {
+        return {
+            clase: 'bg-gray-300',
+            icono: '🔒',
+            descripcion: 'Bloqueado'
+        };
+    }
+    
+    // Calculamos el porcentaje de ocupación
+    const porcentaje = (ocupadas / totales) * 100;
+    
+    if (ocupadas >= totales) {
+        // Completo (100% ocupado)
+        return {
+            clase: 'bg-red-100',
+            icono: '❌',
+            descripcion: 'Completo'
+        };
+    } else if (porcentaje >= 75) {
+        // Casi completo (75-99%)
+        return {
+            clase: 'bg-orange-100',
+            icono: '⚠️',
+            descripcion: 'Casi completo'
+        };
+    } else if (porcentaje >= 50) {
+        // Medio ocupado (50-74%)
+        return {
+            clase: 'bg-yellow-100',
+            icono: '⏳',
+            descripcion: 'Medio'
+        };
+    } else if (ocupadas > 0) {
+        // Poco ocupado (1-49%)
+        return {
+            clase: 'bg-blue-100',
+            icono: '📅',
+            descripcion: 'Disponible'
+        };
+    } else {
+        // Libre (0%)
+        return {
+            clase: 'bg-green-100',
+            icono: '✅',
+            descripcion: 'Libre'
+        };
+    }
+}
+
 function cargarCalendario() {
+    // 1. Obtenemos el servicio seleccionado
     calendarioServicio = document.getElementById('servicio-calendario').value;
     
     const year = calendarioMes.getFullYear();
     const month = calendarioMes.getMonth();
     
+    // 2. Actualizamos el título del mes
     document.getElementById('mes-actual').textContent = calendarioMes.toLocaleDateString('es-ES', { 
         month: 'long', 
         year: 'numeric' 
     });
     
+    // 3. Calculamos los días del mes
     const primerDia = new Date(year, month, 1);
     const ultimoDia = new Date(year, month + 1, 0);
     const dias = [];
+    
+    // 4. Días vacíos al inicio (para alinear con lunes)
     const primerDiaSemana = primerDia.getDay();
     const diasVaciosInicio = primerDiaSemana === 0 ? 6 : primerDiaSemana - 1;
     
@@ -533,33 +647,134 @@ function cargarCalendario() {
         dias.push({ fecha: diaAnterior, mesActual: false });
     }
     
+    // 5. Días del mes actual
     for (let d = new Date(primerDia); d <= ultimoDia; d.setDate(d.getDate() + 1)) {
         dias.push({ fecha: new Date(d), mesActual: true });
     }
     
+    // 6. Generamos el HTML del calendario
     const container = document.getElementById('calendario-admin');
     container.innerHTML = dias.map(dia => {
         const fechaStr = formatearFecha(dia.fecha);
-        const bloqueado = diasBloqueados.includes(fechaStr);
-        const ocupacion = bloqueado ? 0 : Math.floor(Math.random() * 5);
         
-        let colorClass = 'bg-green-100';
-        if (bloqueado) {
-            colorClass = 'bg-gray-300';
-        } else if (ocupacion >= 4) {
-            colorClass = 'bg-red-100';
-        } else if (ocupacion >= 2) {
-            colorClass = 'bg-yellow-100';
+        // ⭐ NUEVO: Si seleccionó "todos", mostramos info combinada
+        if (calendarioServicio === 'todos') {
+            return generarDiaCalendarioTodos(dia, fechaStr);
+        } else {
+            return generarDiaCalendarioServicio(dia, fechaStr);
         }
-        
-        return `
-            <div onclick="clickDiaCalendario('${fechaStr}')" class="calendar-day ${colorClass} p-3 rounded-xl border-2 border-gray-200 cursor-pointer ${!dia.mesActual ? 'opacity-40' : ''}">
-                <div class="font-bold text-sm mb-1">${dia.fecha.getDate()}</div>
-                ${dia.mesActual && !bloqueado ? `<div class="text-xs text-gray-600">${ocupacion}/4</div>` : ''}
-                ${bloqueado ? '<div class="text-xs text-red-600">🔒</div>' : ''}
-            </div>
-        `;
     }).join('');
+}
+
+
+/**
+ * NUEVA FUNCIÓN: Genera HTML de un día para UN servicio específico
+ */
+function generarDiaCalendarioServicio(dia, fechaStr) {
+    // Verificamos si está bloqueado
+    const bloqueado = diasBloqueados.includes(fechaStr);
+    
+    // Calculamos ocupación REAL
+    const plazasTotales = obtenerPlazasTotales(calendarioServicio);
+    const ocupadas = calcularOcupacionReal(fechaStr, calendarioServicio);
+    
+    // Determinamos el estado visual
+    const estado = obtenerEstadoVisual(ocupadas, plazasTotales, bloqueado);
+    
+    // Mostramos información
+    let infoHTML = '';
+    if (dia.mesActual) {
+        if (bloqueado) {
+            infoHTML = `<div class="text-xs text-red-600">${estado.icono}</div>`;
+        } else {
+            infoHTML = `
+                <div class="text-xs text-gray-600">
+                    ${ocupadas}/${plazasTotales}
+                </div>
+                <div class="text-xs">${estado.icono}</div>
+            `;
+        }
+    }
+    
+    return `
+        <div onclick="clickDiaCalendario('${fechaStr}')" 
+             class="calendar-day ${estado.clase} p-3 rounded-xl border-2 border-gray-200 cursor-pointer ${!dia.mesActual ? 'opacity-40' : ''}"
+             title="${estado.descripcion}">
+            <div class="font-bold text-sm mb-1">${dia.fecha.getDate()}</div>
+            ${infoHTML}
+        </div>
+    `;
+}
+
+/**
+ * NUEVA FUNCIÓN: Genera HTML de un día para TODOS los servicios
+ */
+function generarDiaCalendarioTodos(dia, fechaStr) {
+    // Calculamos ocupación para cada servicio
+    const servicios = ['paseos', 'guarderia', 'alojamiento'];
+    const iconos = {
+        'paseos': '🐕',
+        'guarderia': '☀️',
+        'alojamiento': '🏠'
+    };
+    
+    let ocupacionTotal = 0;
+    let plazasTotal = 0;
+    let algunoBloqueado = false;
+    
+    // Información de cada servicio
+    let infoHTML = '';
+    
+    if (dia.mesActual) {
+        servicios.forEach(servicio => {
+            const plazas = obtenerPlazasTotales(servicio);
+            const ocupadas = calcularOcupacionReal(fechaStr, servicio);
+            const bloqueado = diasBloqueados.includes(fechaStr);
+            
+            ocupacionTotal += ocupadas;
+            plazasTotal += plazas;
+            
+            if (bloqueado) algunoBloqueado = true;
+            
+            // Color según ocupación
+            let colorClass = 'text-green-600';
+            if (bloqueado || ocupadas >= plazas) {
+                colorClass = 'text-red-600';
+            } else if (ocupadas >= plazas * 0.75) {
+                colorClass = 'text-orange-600';
+            } else if (ocupadas >= plazas * 0.5) {
+                colorClass = 'text-yellow-600';
+            }
+            
+            infoHTML += `
+                <div class="flex items-center justify-between text-xs ${colorClass}">
+                    <span>${iconos[servicio]}</span>
+                    <span>${ocupadas}/${plazas}</span>
+                </div>
+            `;
+        });
+    }
+    
+    // Color de fondo general
+    const porcentaje = (ocupacionTotal / plazasTotal) * 100;
+    let bgClass = 'bg-green-100';
+    
+    if (algunoBloqueado || porcentaje >= 100) {
+        bgClass = 'bg-red-100';
+    } else if (porcentaje >= 75) {
+        bgClass = 'bg-orange-100';
+    } else if (porcentaje >= 50) {
+        bgClass = 'bg-yellow-100';
+    }
+    
+    return `
+        <div onclick="clickDiaCalendario('${fechaStr}')" 
+             class="calendar-day ${bgClass} p-2 rounded-xl border-2 border-gray-200 cursor-pointer ${!dia.mesActual ? 'opacity-40' : ''}"
+             title="Ocupación combinada">
+            <div class="font-bold text-sm mb-1">${dia.fecha.getDate()}</div>
+            ${infoHTML}
+        </div>
+    `;
 }
 
 function mesAnterior() {
@@ -584,7 +799,8 @@ function activarModoDesbloqueo() {
     document.getElementById('btn-bloquear').className = 'px-4 py-2 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition font-semibold';
 }
 
-function clickDiaCalendario(fecha) {
+async function clickDiaCalendario(fecha) {
+    // 1. Verificamos que se haya seleccionado una acción
     if (!modoCalendario) {
         alert('⚠️ Selecciona primero una acción: Bloquear o Desbloquear días');
         return;
@@ -592,23 +808,129 @@ function clickDiaCalendario(fecha) {
     
     const estaBloqueado = diasBloqueados.includes(fecha);
     
+    // ========================================
+    // MODO BLOQUEAR
+    // ========================================
     if (modoCalendario === 'bloquear') {
         if (estaBloqueado) {
             alert('⚠️ Este día ya está bloqueado');
             return;
         }
+        
+        // Guardamos la fecha seleccionada
         fechaSeleccionada = fecha;
+        
+        // Actualizamos el texto del modal
         document.getElementById('bloquear-fecha').textContent = fecha;
-        document.getElementById('bloquear-servicio').textContent = 'Todos los servicios';
+        
+        // Determinamos qué servicios vamos a bloquear
+        let serviciosABloquear = [];
+        let nombreServicio = '';
+        
+        if (calendarioServicio === 'todos') {
+            serviciosABloquear = ['paseos', 'guarderia', 'alojamiento'];
+            nombreServicio = 'Todos los servicios';
+        } else {
+            serviciosABloquear = [calendarioServicio];
+            nombreServicio = calendarioServicio === 'paseos' ? 'Paseos' :
+                           calendarioServicio === 'guarderia' ? 'Guardería' : 'Alojamiento';
+        }
+        
+        document.getElementById('bloquear-servicio').textContent = nombreServicio;
+        
+        // ⭐ Mostramos las reservas de TODOS los servicios afectados
+        const reservasHtml = await mostrarReservasDelDiaMultiple(fecha, serviciosABloquear);
+        document.getElementById('reservas-dia-bloqueo').innerHTML = reservasHtml;
+        
+        // Guardamos los servicios a bloquear para usarlos en confirmarBloqueo()
+        window.serviciosABloquear = serviciosABloquear;
+        
         abrirModal('modal-bloquear');
-    } else if (modoCalendario === 'desbloquear') {
+    } 
+    // ========================================
+    // MODO DESBLOQUEAR
+    // ========================================
+    else if (modoCalendario === 'desbloquear') {
         if (!estaBloqueado) {
             alert('⚠️ Este día no está bloqueado');
             return;
         }
-        if (confirm('¿Quieres desbloquear este día?\n\nLa guardería volverá a estar disponible.')) {
-            desbloquearDia(fecha);
+        
+        if (confirm('¿Quieres desbloquear este día?\n\nEl servicio volverá a estar disponible.')) {
+            // Si está en modo "todos", desbloqueamos todos los servicios
+            if (calendarioServicio === 'todos') {
+                await desbloquearDiaMultiple(fecha, ['paseos', 'guarderia', 'alojamiento']);
+            } else {
+                await desbloquearDia(fecha);
+            }
         }
+    }
+}
+
+/**
+ * NUEVA: Muestra las reservas de MÚLTIPLES servicios en un día
+ * 
+ * @param {string} fecha - Fecha a consultar
+ * @param {array} servicios - Array de servicios ['paseos', 'guarderia', ...]
+ */
+async function mostrarReservasDelDiaMultiple(fecha, servicios) {
+    try {
+        let html = '<div class="space-y-3">';
+        let hayReservas = false;
+        
+        // Consultamos cada servicio
+        for (const servicio of servicios) {
+            const { data, error } = await supabase
+                .from('reservas')
+                .select('*')
+                .eq('servicio', servicio)
+                .lte('fecha_desde', fecha)
+                .gte('fecha_hasta', fecha)
+                .in('estado', ['pendiente', 'confirmada']);
+            
+            if (error) throw error;
+            
+            if (data && data.length > 0) {
+                hayReservas = true;
+                
+                // Icono del servicio
+                const icono = servicio === 'paseos' ? '🐕' : 
+                            servicio === 'guarderia' ? '☀️' : '🏠';
+                const nombreServicio = servicio === 'paseos' ? 'Paseos' :
+                                     servicio === 'guarderia' ? 'Guardería' : 'Alojamiento';
+                
+                html += `<div class="border-l-4 border-orange-500 pl-3">`;
+                html += `<p class="font-bold text-gray-700">${icono} ${nombreServicio} (${data.length})</p>`;
+                
+                data.forEach(r => {
+                    const badgeClass = `badge-${r.estado}`;
+                    html += `
+                        <div class="bg-white p-2 rounded-lg border border-gray-200 mt-2">
+                            <strong>${r.nombre_perro}</strong> (${r.nombre_dueno})<br>
+                            <span class="${badgeClass} text-white text-xs px-2 py-1 rounded-full">
+                                ${r.estado}
+                            </span>
+                            <span class="text-xs text-gray-600"> · ${r.telefono}</span>
+                        </div>
+                    `;
+                });
+                
+                html += `</div>`;
+            }
+        }
+        
+        if (!hayReservas) {
+            html = '<p class="text-green-600 font-semibold">✅ No hay reservas en este día. Puedes bloquearlo sin problemas.</p>';
+        } else {
+            html += '<p class="text-sm text-gray-600 mt-3">💡 Si bloqueas, estas reservas seguirán activas pero no se podrán hacer nuevas.</p>';
+        }
+        
+        html += '</div>';
+        return html;
+        
+    } catch (error) {
+        console.error('❌ Error obteniendo reservas:', error);
+        return '<p class="text-red-500">Error al cargar reservas.</p>';
     }
 }
 
@@ -616,46 +938,62 @@ async function confirmarBloqueo() {
     if (!fechaSeleccionada) return;
     
     try {
-        // Obtener las plazas totales según el servicio seleccionado
-        const plazasPorServicio = {
-            'paseos': 2,
-            'guarderia': 4,
-            'alojamiento': 4
-        };
+        // Obtenemos los servicios a bloquear (guardados en clickDiaCalendario)
+        const servicios = window.serviciosABloquear || [calendarioServicio];
         
-        // Datos a insertar en la base de datos
-        const datos = {
-            servicio: calendarioServicio,          // Servicio seleccionado (paseos, guarderia, alojamiento)
-            fecha: fechaSeleccionada,              // Fecha a bloquear (formato YYYY-MM-DD)
-            bloqueado: true,                       // Marca el día como bloqueado
-            plazas_ocupadas: 0,                    // No hay plazas ocupadas al bloquear
-            plazas_totales: plazasPorServicio[calendarioServicio] || 4  // ✅ AÑADIDO: Plazas totales del servicio
-        };
+        console.log(`🔒 Bloqueando ${servicios.length} servicio(s) en ${fechaSeleccionada}`);
         
-        console.log('📤 Bloqueando día con datos:', datos);
+        // Bloqueamos cada servicio
+        for (const servicio of servicios) {
+            const plazasPorServicio = {
+                'paseos': 2,
+                'guarderia': 4,
+                'alojamiento': 4
+            };
+            
+            const datos = {
+                servicio: servicio,
+                fecha: fechaSeleccionada,
+                bloqueado: true,
+                plazas_ocupadas: 0,
+                plazas_totales: plazasPorServicio[servicio] || 4
+            };
+            
+            console.log(`  → Bloqueando ${servicio}...`);
+            
+            const { error } = await supabase
+                .from('disponibilidad')
+                .upsert(datos, {
+                    onConflict: 'servicio,fecha'
+                });
+            
+            if (error) {
+                console.error(`    ❌ Error en ${servicio}:`, error);
+                throw error;
+            }
+            
+            console.log(`    ✅ ${servicio} bloqueado`);
+            
+            // Añadimos a la lista de bloqueados
+            if (!diasBloqueados.includes(fechaSeleccionada)) {
+                diasBloqueados.push(fechaSeleccionada);
+            }
+        }
         
-        // upsert = INSERT o UPDATE si ya existe
-        // Si ya existe un registro con el mismo servicio y fecha, lo actualiza
-        // Si no existe, lo crea nuevo
-        const { error } = await supabase
-            .from('disponibilidad')
-            .upsert(datos, {
-                onConflict: 'servicio,fecha'  // Identifica registros únicos por servicio+fecha
-            });
-        
-        if (error) throw error;
-        
-        // Añade el día a la lista de bloqueados en memoria
-        diasBloqueados.push(fechaSeleccionada);
-        
-        // Cierra el modal y actualiza el calendario visual
+        // Cerramos modal y actualizamos
         cerrarModal('modal-bloquear');
         cargarCalendario();
         
-        mostrarExito('Día bloqueado correctamente');
-        fechaSeleccionada = null;  // Limpia la selección
+        const mensaje = servicios.length === 1 
+            ? `Día bloqueado para ${servicios[0]}` 
+            : `Día bloqueado para ${servicios.length} servicios`;
+        
+        mostrarExito(mensaje);
+        fechaSeleccionada = null;
+        window.serviciosABloquear = null;
+        
     } catch (error) {
-        console.error('Error bloqueando día:', error);
+        console.error('❌ Error bloqueando día:', error);
         mostrarError('No se pudo bloquear el día: ' + error.message);
     }
 }
@@ -682,6 +1020,103 @@ async function desbloquearDia(fecha) {
         mostrarError('No se pudo desbloquear el día: ' + error.message);
     }
 }
+
+/**
+ * NUEVA: Desbloquea múltiples servicios en una fecha
+ */
+async function desbloquearDiaMultiple(fecha, servicios) {
+    try {
+        for (const servicio of servicios) {
+            const { error } = await supabase
+                .from('disponibilidad')
+                .update({ bloqueado: false })
+                .eq('servicio', servicio)
+                .eq('fecha', fecha);
+            
+            if (error) throw error;
+        }
+        
+        // Eliminamos de la lista de bloqueados
+        diasBloqueados = diasBloqueados.filter(d => d !== fecha);
+        
+        cargarCalendario();
+        mostrarExito(`Día desbloqueado para ${servicios.length} servicio(s)`);
+        
+    } catch (error) {
+        console.error('Error desbloqueando:', error);
+        mostrarError('No se pudo desbloquear: ' + error.message);
+    }
+}
+
+async function verificarReservasEnFecha(fecha, servicio) {
+    try {
+        // 1. Consultamos en Supabase las reservas que incluyan esta fecha
+        const { data, error } = await supabase
+            .from('reservas')
+            .select('id, nombre_perro, estado')
+            .eq('servicio', servicio)
+            // La fecha debe estar en el rango fecha_desde <= fecha <= fecha_hasta
+            .lte('fecha_desde', fecha)  // fecha_desde menor o igual a la fecha
+            .gte('fecha_hasta', fecha)  // fecha_hasta mayor o igual a la fecha
+            // Solo contamos reservas activas (no rechazadas ni canceladas)
+            .in('estado', ['pendiente', 'confirmada']);
+        
+        if (error) throw error;
+        
+        // 2. Si hay datos, significa que hay reservas
+        if (data && data.length > 0) {
+            console.log(`⚠️ Encontradas ${data.length} reserva(s) en ${fecha}:`, data);
+            return true;
+        }
+        
+        // 3. No hay reservas en esta fecha
+        return false;
+        
+    } catch (error) {
+        console.error('Error verificando reservas:', error);
+        // En caso de error, asumimos que NO hay reservas para no bloquear sin razón
+        return false;
+    }
+}
+
+async function mostrarReservasDelDia(fecha, servicio) {
+    try {
+        const { data, error } = await supabase
+            .from('reservas')
+            .select('*')
+            .eq('servicio', servicio)
+            .lte('fecha_desde', fecha)
+            .gte('fecha_hasta', fecha)
+            .in('estado', ['pendiente', 'confirmada']);
+        
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            return '<p class="text-gray-500">No hay reservas en este día</p>';
+        }
+        
+        // Generamos HTML con la lista de reservas
+        let html = '<div class="space-y-2"><p class="font-bold">Reservas en este día:</p>';
+        data.forEach(r => {
+            html += `
+                <div class="bg-gray-100 p-2 rounded text-sm">
+                    <strong>${r.nombre_perro}</strong> (${r.nombre_dueno})<br>
+                    Estado: <span class="badge-${r.estado} px-2 py-1 rounded text-white text-xs">
+                        ${r.estado}
+                    </span>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        return html;
+        
+    } catch (error) {
+        console.error('Error obteniendo reservas:', error);
+        return '<p class="text-red-500">Error al cargar reservas</p>';
+    }
+}
+
 
 // ========================================
 // FESTIVOS
