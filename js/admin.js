@@ -182,64 +182,136 @@ function filtrarReservas() {
 }
 
 function verDetalle(id) {
+    // 1. Buscamos la reserva en nuestro array de datos
     const reserva = reservasData.find(r => r.id === id);
     if (!reserva) {
         mostrarError('No se encontró la reserva');
         return;
     }
     
-    const servicioIcon = reserva.servicio === 'paseos' ? '🐕' : reserva.servicio === 'guarderia' ? '☀️' : '🏠';
+    // 2. Determinamos el ícono según el servicio
+    const servicioIcon = reserva.servicio === 'paseos' ? '🐕' : 
+                        reserva.servicio === 'guarderia' ? '☀️' : '🏠';
+    
+    // 3. Clase CSS para el badge según el estado
     const badgeClass = `badge-${reserva.estado}`;
     
+    // 4. Verificamos si la reserva ya pasó
+    const hoy = formatearFecha(new Date());
+    const esPasada = reserva.fecha_hasta < hoy;
+    
+    // 5. Construimos el HTML del modal
     const html = `
         <div class="space-y-4">
+            <!-- Encabezado con nombre del perro y estado -->
             <div class="flex items-center gap-3 mb-4">
                 <span class="text-3xl">${servicioIcon}</span>
                 <div>
                     <h4 class="text-xl font-bold">${reserva.nombre_perro}</h4>
-                    <span class="${badgeClass} text-white text-xs px-3 py-1 rounded-full font-semibold">${reserva.estado.toUpperCase()}</span>
+                    <div class="flex gap-2 mt-1">
+                        <span class="${badgeClass} text-white text-xs px-3 py-1 rounded-full font-semibold">
+                            ${reserva.estado.toUpperCase()}
+                        </span>
+                        ${esPasada ? '<span class="bg-gray-400 text-white text-xs px-3 py-1 rounded-full font-semibold">PASADA</span>' : ''}
+                    </div>
                 </div>
             </div>
+            
+            <!-- Información del servicio -->
             <div class="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl">
                 <div><strong>Servicio:</strong> ${reserva.servicio}</div>
                 <div><strong>Tarifa:</strong> ${reserva.tarifa}</div>
                 <div><strong>Horario/Transporte:</strong> ${reserva.tramo_horario}</div>
                 <div><strong>Precio Total:</strong> ${reserva.precio_total}€</div>
             </div>
+            
+            <!-- Fechas de la reserva -->
             <div class="bg-gray-50 p-4 rounded-xl">
-                <h5 class="font-bold mb-2">Fechas</h5>
+                <h5 class="font-bold mb-2">📅 Fechas</h5>
                 <p>Desde: ${reserva.fecha_desde}</p>
                 <p>Hasta: ${reserva.fecha_hasta}</p>
             </div>
+            
+            <!-- Datos del dueño -->
             <div class="bg-gray-50 p-4 rounded-xl">
-                <h5 class="font-bold mb-2">Datos del Dueño</h5>
+                <h5 class="font-bold mb-2">👤 Datos del Dueño</h5>
                 <p><strong>Nombre:</strong> ${reserva.nombre_dueno}</p>
                 <p><strong>Teléfono:</strong> ${reserva.telefono}</p>
                 <p><strong>Email:</strong> ${reserva.email}</p>
                 ${reserva.direccion ? `<p><strong>Dirección:</strong> ${reserva.direccion}</p>` : ''}
             </div>
+            
+            <!-- Datos del perro -->
             <div class="bg-gray-50 p-4 rounded-xl">
-                <h5 class="font-bold mb-2">Datos del Perro</h5>
+                <h5 class="font-bold mb-2">🐕 Datos del Perro</h5>
                 <p><strong>Raza:</strong> ${reserva.raza || 'No especificada'}</p>
                 <p><strong>Tamaño:</strong> ${reserva.tamano}</p>
                 <p><strong>Perro extra:</strong> ${reserva.perro_extra ? 'Sí' : 'No'}</p>
                 ${reserva.notas ? `<p><strong>Notas:</strong> ${reserva.notas}</p>` : ''}
             </div>
+            
+            <!-- Botones de acción según el estado -->
             <div class="flex gap-3 mt-6">
-                ${reserva.estado === 'pendiente' ? `
-                    <button onclick="confirmarReserva('${reserva.id}'); cerrarModal('modal-detalle');" class="flex-1 px-6 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition">Confirmar</button>
-                    <button onclick="rechazarReserva('${reserva.id}'); cerrarModal('modal-detalle');" class="flex-1 px-6 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition">Rechazar</button>
-                ` : ''}
-                ${reserva.estado === 'confirmada' ? `
-                    <button onclick="editarReserva('${reserva.id}')" class="flex-1 px-6 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition">Modificar</button>
-                    <button onclick="cancelarReserva('${reserva.id}'); cerrarModal('modal-detalle');" class="flex-1 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition">Cancelar</button>
-                ` : ''}
+                ${!esPasada ? generarBotonesAccion(reserva) : '<p class="text-gray-500 text-center w-full">Esta reserva ya ha finalizado</p>'}
             </div>
         </div>
     `;
     
+    // 6. Insertamos el HTML en el modal y lo mostramos
     document.getElementById('detalle-content').innerHTML = html;
     abrirModal('modal-detalle');
+}
+
+function generarBotonesAccion(reserva) {
+    let botones = '';
+    
+    // BOTÓN EDITAR: Disponible en TODOS los estados (excepto pasadas)
+    botones += `
+        <button onclick="editarReserva('${reserva.id}')" 
+                class="flex-1 px-6 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition">
+            ✏️ Modificar
+        </button>
+    `;
+    
+    // BOTONES según el ESTADO ACTUAL
+    switch(reserva.estado) {
+        case 'pendiente':
+            // Si está pendiente: permitir confirmar y rechazar
+            botones += `
+                <button onclick="confirmarReserva('${reserva.id}'); cerrarModal('modal-detalle');" 
+                        class="flex-1 px-6 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition">
+                    ✓ Confirmar
+                </button>
+                <button onclick="rechazarReserva('${reserva.id}'); cerrarModal('modal-detalle');" 
+                        class="flex-1 px-6 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition">
+                    ✗ Rechazar
+                </button>
+            `;
+            break;
+            
+        case 'confirmada':
+            // Si está confirmada: permitir cancelar
+            botones += `
+                <button onclick="cancelarReserva('${reserva.id}'); cerrarModal('modal-detalle');" 
+                        class="flex-1 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition">
+                    🚫 Cancelar
+                </button>
+            `;
+            break;
+            
+        case 'rechazada':
+        case 'cancelada':
+            // Si está rechazada o cancelada: permitir reactivar
+            botones += `
+                <button onclick="reactivarReserva('${reserva.id}'); cerrarModal('modal-detalle');" 
+                        class="flex-1 px-6 py-3 bg-purple-500 text-white rounded-xl font-semibold hover:bg-purple-600 transition">
+                    🔄 Reactivar
+                </button>
+            `;
+            break;
+    }
+    
+    return botones;
 }
 
 async function confirmarReserva(id) {
@@ -296,6 +368,31 @@ async function cancelarReserva(id) {
     } catch (error) {
         console.error('Error cancelando reserva:', error);
         mostrarError('No se pudo cancelar la reserva: ' + error.message);
+    }
+}
+
+async function reactivarReserva(id) {
+    if (!confirm('¿Reactivar esta reserva y cambiarla a PENDIENTE?')) return;
+    
+    try {
+        // Cambiamos el estado a pendiente
+        const { error } = await supabase
+            .from('reservas')
+            .update({ 
+                estado: 'pendiente',
+                updated_at: new Date().toISOString() 
+            })
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        // Recargamos los datos
+        await cargarReservas();
+        actualizarEstadisticas();
+        mostrarExito('Reserva reactivada correctamente');
+    } catch (error) {
+        console.error('Error reactivando reserva:', error);
+        mostrarError('No se pudo reactivar la reserva: ' + error.message);
     }
 }
 
