@@ -67,19 +67,33 @@ async function init() {
 // ========================================
 // GESTIÓN DE TABS
 // ========================================
-function cambiarTab(tab) {
+async function cambiarTab(tab) {
+    // 1. Ocultamos todos los contenidos
     document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    
+    // 2. Quitamos la clase activa de todos los botones
     document.querySelectorAll('.tab-button').forEach(el => {
         el.classList.remove('active');
         el.classList.add('bg-white', 'text-gray-700');
     });
+    
+    // 3. Mostramos el contenido seleccionado
     document.getElementById(`content-${tab}`).classList.remove('hidden');
+    
+    // 4. Activamos el botón seleccionado
     const btn = document.getElementById(`tab-${tab}`);
     btn.classList.add('active');
     btn.classList.remove('bg-white', 'text-gray-700');
     
-    if (tab === 'calendario') cargarCalendario();
-    else if (tab === 'festivos') cargarFestivos();
+    // 5. Cargamos datos específicos según la pestaña
+    if (tab === 'calendario') {
+        cargarCalendario();
+    } else if (tab === 'festivos') {
+        await cargarFestivos();
+    } else if (tab === 'precios') {
+        // ⭐ AQUÍ CARGAMOS LOS PRECIOS
+        await cargarPreciosDesdeDB();
+    }
 }
 
 // ========================================
@@ -1206,28 +1220,146 @@ async function eliminarFestivo(id) {
 }
 
 // ========================================
-// PRECIOS
+// PRECIOS - CARGAR DESDE BASE DE DATOS
 // ========================================
+
+/**
+ * Carga la configuración de precios desde la base de datos
+ * y actualiza los campos del formulario
+ */
+async function cargarPreciosDesdeDB() {
+    try {
+        console.log('📥 Cargando precios desde la base de datos...');
+        
+        // 1. Obtenemos TODA la configuración de Supabase
+        const { data, error } = await supabase
+            .from('configuracion')
+            .select('*');
+        
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            console.warn('⚠️ No hay configuración en la base de datos, usando valores por defecto');
+            return;
+        }
+        
+        // 2. Convertimos el array en un objeto para fácil acceso
+        const config = {};
+        data.forEach(item => {
+            config[item.clave] = item.valor;
+        });
+        
+        console.log('✅ Configuración cargada:', config);
+        
+        // 3. Actualizamos cada campo del formulario con el valor de la BD
+        
+        // PASEOS
+        if (config.precio_paseos_normal) {
+            document.getElementById('precio-paseos-normal').value = config.precio_paseos_normal;
+        }
+        if (config.precio_paseos_cachorros) {
+            document.getElementById('precio-paseos-cachorros').value = config.precio_paseos_cachorros;
+        }
+        if (config.precio_paseos_festivos) {
+            document.getElementById('precio-paseos-festivos').value = config.precio_paseos_festivos;
+        }
+        if (config.precio_paseos_extra) {
+            document.getElementById('precio-paseos-extra').value = config.precio_paseos_extra;
+        }
+        if (config.plazas_paseos) {
+            document.getElementById('plazas-paseos').value = config.plazas_paseos;
+        }
+        
+        // GUARDERÍA
+        if (config.precio_guarderia_normal) {
+            document.getElementById('precio-guarderia-normal').value = config.precio_guarderia_normal;
+        }
+        if (config.precio_guarderia_cachorros) {
+            document.getElementById('precio-guarderia-cachorros').value = config.precio_guarderia_cachorros;
+        }
+        if (config.precio_guarderia_festivos) {
+            document.getElementById('precio-guarderia-festivos').value = config.precio_guarderia_festivos;
+        }
+        if (config.precio_guarderia_extra) {
+            document.getElementById('precio-guarderia-extra').value = config.precio_guarderia_extra;
+        }
+        if (config.plazas_guarderia) {
+            document.getElementById('plazas-guarderia').value = config.plazas_guarderia;
+        }
+        
+        // ALOJAMIENTO
+        if (config.precio_alojamiento_normal) {
+            document.getElementById('precio-alojamiento-normal').value = config.precio_alojamiento_normal;
+        }
+        if (config.precio_alojamiento_cachorros) {
+            document.getElementById('precio-alojamiento-cachorros').value = config.precio_alojamiento_cachorros;
+        }
+        if (config.precio_alojamiento_festivos) {
+            document.getElementById('precio-alojamiento-festivos').value = config.precio_alojamiento_festivos;
+        }
+        if (config.precio_alojamiento_extra) {
+            document.getElementById('precio-alojamiento-extra').value = config.precio_alojamiento_extra;
+        }
+        if (config.plazas_alojamiento) {
+            document.getElementById('plazas-alojamiento').value = config.plazas_alojamiento;
+        }
+        
+        console.log('✅ Formulario de precios actualizado');
+        
+    } catch (error) {
+        console.error('❌ Error cargando precios:', error);
+        mostrarError('No se pudieron cargar los precios: ' + error.message);
+    }
+}
+
+// ========================================
+// PRECIOS - GUARDAR EN BASE DE DATOS
+// ========================================
+
+/**
+ * Guarda los precios en la base de datos
+ * Mejorada con feedback visual y validación
+ */
 async function guardarPrecios() {
     try {
+        console.log('💾 Guardando precios...');
+        
+        // 1. Obtenemos todos los valores del formulario
         const precios = {
             plazas_paseos: document.getElementById('plazas-paseos').value,
             plazas_guarderia: document.getElementById('plazas-guarderia').value,
             plazas_alojamiento: document.getElementById('plazas-alojamiento').value,
+            
             precio_paseos_normal: document.getElementById('precio-paseos-normal').value,
             precio_paseos_cachorros: document.getElementById('precio-paseos-cachorros').value,
             precio_paseos_festivos: document.getElementById('precio-paseos-festivos').value,
             precio_paseos_extra: document.getElementById('precio-paseos-extra').value,
+            
             precio_guarderia_normal: document.getElementById('precio-guarderia-normal').value,
             precio_guarderia_cachorros: document.getElementById('precio-guarderia-cachorros').value,
             precio_guarderia_festivos: document.getElementById('precio-guarderia-festivos').value,
             precio_guarderia_extra: document.getElementById('precio-guarderia-extra').value,
+            
             precio_alojamiento_normal: document.getElementById('precio-alojamiento-normal').value,
             precio_alojamiento_cachorros: document.getElementById('precio-alojamiento-cachorros').value,
             precio_alojamiento_festivos: document.getElementById('precio-alojamiento-festivos').value,
             precio_alojamiento_extra: document.getElementById('precio-alojamiento-extra').value
         };
         
+        // 2. Validamos que todos sean números positivos
+        const errores = [];
+        Object.entries(precios).forEach(([clave, valor]) => {
+            const numero = parseFloat(valor);
+            if (isNaN(numero) || numero < 0) {
+                errores.push(`• ${clave}: debe ser un número positivo`);
+            }
+        });
+        
+        if (errores.length > 0) {
+            throw new Error('Valores inválidos:\n' + errores.join('\n'));
+        }
+        
+        // 3. Guardamos cada precio en la base de datos usando upsert
         const promesas = Object.entries(precios).map(([clave, valor]) => {
             return supabase
                 .from('configuracion')
@@ -1240,35 +1372,79 @@ async function guardarPrecios() {
                 });
         });
         
+        // 4. Esperamos que todas las promesas se completen
         const resultados = await Promise.all(promesas);
-        const errores = resultados.filter(r => r.error);
-        if (errores.length > 0) throw new Error('Error actualizando algunos precios');
         
+        // 5. Verificamos si hubo errores
+        const erroresDB = resultados.filter(r => r.error);
+        if (erroresDB.length > 0) {
+            console.error('Errores guardando:', erroresDB);
+            throw new Error('Error actualizando algunos precios');
+        }
+        
+        console.log('✅ Todos los precios guardados correctamente');
         mostrarExito('Precios guardados correctamente');
+        
+        // 6. Recargamos la configuración para asegurar sincronización
+        await cargarPreciosDesdeDB();
+        
     } catch (error) {
-        console.error('Error guardando precios:', error);
+        console.error('❌ Error guardando precios:', error);
         mostrarError('No se pudieron guardar los precios: ' + error.message);
     }
 }
 
-function resetearPrecios() {
-    if (!confirm('¿Restablecer precios por defecto?')) return;
+/**
+ * Resetea los precios a los valores por defecto
+ * y los guarda en la base de datos
+ */
+async function resetearPrecios() {
+    if (!confirm('¿Restablecer precios por defecto?\n\nEsto sobrescribirá los precios actuales.')) {
+        return;
+    }
     
-    document.getElementById('precio-paseos-normal').value = 12;
-    document.getElementById('precio-paseos-cachorros').value = 14;
-    document.getElementById('precio-paseos-festivos').value = 13;
-    document.getElementById('precio-paseos-extra').value = 9;
-    document.getElementById('plazas-paseos').value = 2;
-    document.getElementById('precio-guarderia-normal').value = 20;
-    document.getElementById('precio-guarderia-cachorros').value = 22;
-    document.getElementById('precio-guarderia-festivos').value = 25;
-    document.getElementById('precio-guarderia-extra').value = 15;
-    document.getElementById('plazas-guarderia').value = 4;
-    document.getElementById('precio-alojamiento-normal').value = 35;
-    document.getElementById('precio-alojamiento-cachorros').value = 38;
-    document.getElementById('precio-alojamiento-festivos').value = 40;
-    document.getElementById('precio-alojamiento-extra').value = 25;
-    document.getElementById('plazas-alojamiento').value = 4;
+    try {
+        console.log('🔄 Restableciendo precios por defecto...');
+        
+        // 1. Valores por defecto del sistema
+        const preciosPorDefecto = {
+            plazas_paseos: 2,
+            plazas_guarderia: 4,
+            plazas_alojamiento: 4,
+            
+            precio_paseos_normal: 12,
+            precio_paseos_cachorros: 14,
+            precio_paseos_festivos: 13,
+            precio_paseos_extra: 9,
+            
+            precio_guarderia_normal: 20,
+            precio_guarderia_cachorros: 22,
+            precio_guarderia_festivos: 25,
+            precio_guarderia_extra: 15,
+            
+            precio_alojamiento_normal: 35,
+            precio_alojamiento_cachorros: 38,
+            precio_alojamiento_festivos: 40,
+            precio_alojamiento_extra: 25
+        };
+        
+        // 2. Actualizamos los campos del formulario
+        Object.entries(preciosPorDefecto).forEach(([clave, valor]) => {
+            const input = document.getElementById(clave.replace(/_/g, '-'));
+            if (input) {
+                input.value = valor;
+            }
+        });
+        
+        // 3. Guardamos en la base de datos
+        await guardarPrecios();
+        
+        console.log('✅ Precios restablecidos');
+        
+    } catch (error) {
+        console.error('❌ Error restableciendo precios:', error);
+        mostrarError('No se pudieron restablecer los precios: ' + error.message);
+    }
 }
 
 // ========================================
